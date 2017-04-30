@@ -50,11 +50,11 @@ def _create_public_playlist_and_add_tracks(sp_obj, results, user_name):
 
 def generate_playlist(list_of_genres, country_code, energy_value):
     '''Public function to generate a playlist'''
-    sp_obj = _get_spotipy_object(USER_NAME)
+    sp_obj = _get_spotipy_object(SPOTIFY_USER_ID)
     results = _get_generated_recommendation_tracks(sp_obj, country_code, list_of_genres, energy_value)
-    print _create_public_playlist_and_add_tracks(sp_obj, results, USER_NAME)
+    print _create_public_playlist_and_add_tracks(sp_obj, results, SPOTIFY_USER_ID)
 
 
 if __name__ == "__main__":
-    _get_spotipy_object(USER_NAME)
+    _get_spotipy_object(SPOTIFY_USER_ID)
     generate_playlist(['classical', 'rock'], "GB", 0.506)
