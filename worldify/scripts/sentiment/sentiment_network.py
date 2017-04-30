@@ -57,7 +57,7 @@ class SentimentNetwork:
 
         print('Get total log ratio of words')
 
-        if not (os.path.isfile('./review_vocab.pkl')):
+        if not (os.path.isfile('scripts/sentiment/review_vocab.pkl')):
             review_vocab = set()
             for review in reviews:
                 for word in review.split(" "):
@@ -68,10 +68,10 @@ class SentimentNetwork:
                         else:
                             review_vocab.add(word)
 
-            pkl_file = open('./review_vocab.pkl', 'wb')
+            pkl_file = open('scripts/sentiment/review_vocab.pkl', 'wb')
             pickle.dump(review_vocab, pkl_file)
         else:
-            pkl_file = open('./review_vocab.pkl', 'rb')
+            pkl_file = open('scripts/sentiment/review_vocab.pkl', 'rb')
             review_vocab = pickle.load(pkl_file)
 
         pkl_file.close()
