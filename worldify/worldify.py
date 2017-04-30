@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify
-from generate_dataset import get_dataset
-from generate_mood_words import generate_words
-from run import run_sentiment_analysis
-from spotify_lib import generate_playlist
+from scripts.generate_dataset import get_dataset
+from scripts.generate_mood_words import generate_words
+from scripts.sentiment.run import run_sentiment_analysis
+from scripts.spotify_lib import generate_playlist
 import json
 
 app = Flask(__name__)
