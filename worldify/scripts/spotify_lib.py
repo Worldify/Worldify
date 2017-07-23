@@ -1,11 +1,13 @@
 '''Containing functions to interact with spotify web api wrapper'''
 
+import datetime
+import os
+import requests
+import urlparse
+
 from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy
-import os
 import spotipy.util as util
-import requests
-import datetime
 
 # Constants
 SPOTIFY_USER_ID = os.getenv("SPOTIFY_USER_ID")
@@ -15,46 +17,65 @@ SCOPE = "user-library-read playlist-modify-public playlist-modify-private playli
 
 SPOTIFY_USER_OAUTH = os.getenv("SPOTIFY_USER_OAUTH")
 
-def _get_spotipy_object(user_id):
-    '''Return a spotipy object with authentications'''
-    token = util.prompt_for_user_token(user_id, SCOPE)
-    sp = spotipy.Spotify(auth=token)
-    return sp
+def _get_request_session_object_with_oauth():
+    '''Return a session object with oauth header.'''
+    headers = {"Authorization": "Bearer {0}".format(SPOTIFY_USER_OAUTH),
+               "Content-Type": "application/json"}
+    session_obj = requests.Session()
+    session_obj.headers.update(headers)
+    return session_obj
+
+def _get_spotify_api_url(endpoint=''):
+    '''Return a Spotify API url with an optional custom endpoint.'''
+    return urlparse.urljoin("https://api.spotify.com/v1/", endpoint)
 
 
-def _get_generated_recommendation_tracks(sp_obj, country_code, genre_seed_list, energy_level=0.5):
-    '''Returns a result based on a energy level and genre_seed_list and market'''
-    #energy attribute was previous
-    results = sp_obj.recommendations(seed_genres=genre_seed_list, valence=energy_level, market=country_code, limit=10)
-    return results
+def _get_generated_recommendation_tracks(country_code, genre_seed_list, energy_level=0.5, songs_limit=10):
+    '''Returns a list of recommended track ids based on query values.'''
+    queries = {"seed_genres":genre_seed_list, "valence":energy_level,
+             "market":country_code, "limit":songs_limit}
+    api_url = _get_spotify_api_url("recommendations")
+    session_obj = _get_request_session_object_with_oauth()
+    response = session_obj.get(api_url, params=queries)
+    json_tracks_list = response.json()['tracks']
+    recommended_tracks_id_list = [track['id'] for track in
+                                  json_tracks_list]
+    return recommended_tracks_id_list
 
-def _create_public_playlist_and_add_tracks(sp_obj, results, user_name):
+
+def _generate_recommended_playlist(tracks_id_list):
     '''Create a public playilist and add tracks to it.'''
-    # Creating a public playlist
-    sp_obj.trace = False
+    playlist_url = _create_public_playlist()
+    response = _add_tracks_to_playlist(playlist_url, tracks_id_list)
+    return response
+
+def _create_public_playlist():
+    '''Return playlist url after creating it publicly on user's page'''
+    endpoint = "users/{0}/playlists".format(SPOTIFY_USER_ID)
+    api_url = _get_spotify_api_url(endpoint)
     playlist_name = datetime.datetime.now().strftime("%H-%M-%S")
-    playlists = sp_obj.user_playlist_create(user_name, playlist_name)
-    # Find id of the playlist
-    playlists = sp_obj.current_user_playlists(limit=10)
-    playlists = playlists['items']
-    for playlist in playlists:
-        if playlist['name'] == playlist_name:
-            playlist_id = playlist['id']
-            break
-    # Adding tracks from results
-    tracks_list = results['tracks']
-    list_of_track_ids = [track['id'] for track in tracks_list]
-    results = sp_obj.user_playlist_add_tracks(user_name, playlist_id, list_of_track_ids)
-    return results
+    post_body = {"name": playlist_name}
+    session_obj = _get_request_session_object_with_oauth()
+    response = session_obj.post(api_url, json=post_body)
+    return response.json()['href']
+
+def _add_tracks_to_playlist(playlist_url, tracks_id_list):
+    '''Add a list of tracks to a given playlist.'''
+    uri_list_query = {"uris": tracks_id_list}
+    session_obj = _get_request_session_object_with_oauth()
+    response = session_obj(playlist_url, params=uri_list_query)
+    return response
+
+
 
 
 def generate_playlist(list_of_genres, country_code, energy_value):
-    '''Public function to generate a playlist'''
-    sp_obj = _get_spotipy_object(SPOTIFY_USER_ID)
-    results = _get_generated_recommendation_tracks(sp_obj, country_code, list_of_genres, energy_value)
-    print _create_public_playlist_and_add_tracks(sp_obj, results, SPOTIFY_USER_ID)
+    '''Public function to generate a public playlist'''
+    track_id_list = _get_generated_recommendation_tracks(country_code,
+                                                         list_of_genres,
+                                                         energy_value)
+    return _generate_recommended_playlist(track_id_list)
 
 
 if __name__ == "__main__":
-    _get_spotipy_object(SPOTIFY_USER_ID)
     generate_playlist(['classical', 'rock'], "GB", 0.506)
